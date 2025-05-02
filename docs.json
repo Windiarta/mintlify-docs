@@ -44,12 +44,60 @@
             ]
           },
           {
-            "group": "Endpoint Examples",
+            "group": "AUTH",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/ds-ai-service/auth/login-for-access-token",
+              "api-reference/ds-ai-service/auth/read-users-me"
+            ]
+          },
+          {
+            "group": "PDFv1",
+            "pages": [
+              "api-reference/ds-ai-service/pdfv1/fetch-latest-revision-index-for-documents",
+              "api-reference/ds-ai-service/pdfv1/convert-pdf-to-markdown",
+              "api-reference/ds-ai-service/pdfv1/upload-pdf-document-with-metadata",
+              "api-reference/ds-ai-service/pdfv1/delete-pdf-document"
+            ]
+          },
+          {
+            "group": "GCSv1",
+            "pages": [
+              "api-reference/ds-ai-service/gcsv1/get-gcs-list"
+            ]
+          },
+          {
+            "group": "QDRANTv1",
+            "pages": [
+              "api-reference/ds-ai-service/qdrantv1/get-chunk",
+              "api-reference/ds-ai-service/qdrantv1/get-document",
+              "api-reference/ds-ai-service/qdrantv1/get-chunk-from-document",
+              "api-reference/ds-ai-service/qdrantv1/post-filter-chunk"
+            ]
+          },
+          {
+            "group": "CHATv1",
+            "pages": [
+              "api-reference/ds-ai-service/chatv1/naive-rag-chat",
+              "api-reference/ds-ai-service/chatv1/hyde-rag-chat",
+              "api-reference/ds-ai-service/chatv1/reasoning-rag-chat",
+              "api-reference/ds-ai-service/chatv1/rats-chat",
+              "api-reference/ds-ai-service/chatv1/feedback"
+            ]
+          },
+          {
+            "group": "CHAT-SSEv1",
+            "pages": [
+              "api-reference/ds-ai-service/chat-ssev1/stream-events",
+              "api-reference/ds-ai-service/chat-ssev1/chat1",
+              "api-reference/ds-ai-service/chat-ssev1/chat2"
+            ]
+          },
+          {
+            "group": "HISTORYv1",
+            "pages": [
+              "api-reference/ds-ai-service/historyv1/get-session",
+              "api-reference/ds-ai-service/historyv1/get-chat",
+              "api-reference/ds-ai-service/historyv1/get-chat-message"
             ]
           }
         ]

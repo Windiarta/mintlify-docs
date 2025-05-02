@@ -1,72 +1,28 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "OpenAPI Plant Store",
-    "description": "A sample API that uses a plant store as an example to demonstrate features in the OpenAPI specification",
-    "license": {
-      "name": "MIT"
-    },
-    "version": "1.0.0"
+    "title": "DS_AI_SERVICES",
+    "version": "0.1"
   },
   "servers": [
     {
-      "url": "http://sandbox.mintlify.com"
-    }
-  ],
-  "security": [
-    {
-      "bearerAuth": []
+      "url": "/api/v1"
     }
   ],
   "paths": {
-    "/plants": {
-      "get": {
-        "description": "Returns all plants from the system that the user has access to",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "The maximum number of results to return",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Plant response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Plant"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
+    "/token": {
       "post": {
-        "description": "Creates a new plant in the store",
+        "tags": [
+          "AUTH"
+        ],
+        "summary": "Login For Access Token",
+        "description": "Handles user login and returns an access token for authentication.\n\nThis endpoint verifies user credentials and generates a JWT access token\nif the credentials are valid. The token can be used for subsequent\nauthenticated requests.\n\nParameters:\n    form_data (OAuth2PasswordRequestForm):\n\n```json\n{\n    \"username\": \"string\",\n    \"password\": \"password\"\n}\n```\n\nReturns:\n\n```json\n{\n    \"access_token\": \"string\",\n    \"token_type\": \"string\"\n}\n```",
+        "operationId": "login_for_access_token_token_post",
         "requestBody": {
-          "description": "Plant to add to the store",
           "content": {
-            "application/json": {
+            "application/x-www-form-urlencoded": {
               "schema": {
-                "$ref": "#/components/schemas/NewPlant"
+                "$ref": "#/components/schemas/Body_login_for_access_token_token_post"
               }
             }
           },
@@ -74,21 +30,21 @@
         },
         "responses": {
           "200": {
-            "description": "plant response",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Plant"
+                  "$ref": "#/components/schemas/Token"
                 }
               }
             }
           },
-          "400": {
-            "description": "unexpected error",
+          "422": {
+            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -96,57 +52,1058 @@
         }
       }
     },
-    "/plants/{id}": {
+    "/users/me": {
+      "get": {
+        "tags": [
+          "AUTH"
+        ],
+        "summary": "Read Users Me",
+        "description": "Retrieve the current active user.\n\nThis endpoint returns the details of the currently authenticated and active user.\nThe user information is retrieved using the `get_current_active_user` dependency.\n\nParameters:\n    current_user (User): The currently authenticated user, ensured to be active.\n\nReturns:\n    User: The current active user's details.",
+        "operationId": "read_users_me_users_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/pdf/list": {
+      "get": {
+        "tags": [
+          "PDFv1"
+        ],
+        "summary": "Fetch Latest Revision Index for Documents",
+        "description": "Retrieves a list of documents with their latest revision index from the database.\n\n    ### Implementation:  \n    - Queries the database to get the **latest revision index** for each unique `DocumentNumber`.\n    - Uses **GROUP BY** to ensure only the most recent revision is retrieved.",
+        "operationId": "get_pdf_list_pdf_list_get",
+        "responses": {
+          "200": {
+            "description": "A list of documents with their latest revision index",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get Pdf List Pdf List Get"
+                },
+                "example": [
+                  {
+                    "DocumentNumber": "ABC123",
+                    "RevisionIndex": 5
+                  },
+                  {
+                    "DocumentNumber": "XYZ789",
+                    "RevisionIndex": 3
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Database connection failed"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/pdf/to_markdown": {
+      "post": {
+        "tags": [
+          "PDFv1"
+        ],
+        "summary": "Convert PDF to Markdown",
+        "description": "Endpoint to convert an uploaded PDF file to markdown text.\n\n    **Implementation:**\n    - Extracts text, tables, and other elements from the PDF.\n    - Returns the extracted content in markdown format.\n    - If the PDF is encrypted, returns `None`.\n\n    **Notes:**\n    - This API may take some time to respond.\n    - Maximum file size: **25 MB**.",
+        "operationId": "post_pdf_to_markdown_pdf_to_markdown_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_post_pdf_to_markdown_pdf_to_markdown_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Markdown text extracted from the PDF",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "string": {
+                "example": [
+                  "# Sample Title\n\nThis is extracted text from the PDF."
+                ]
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file format or file too large",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "File size exceeds 25 MB"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Error converting PDF to markdown"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/pdf/upload": {
+      "post": {
+        "tags": [
+          "PDFv1"
+        ],
+        "summary": "Upload PDF Document with Metadata",
+        "description": "Handles the upload of a PDF file along with its associated metadata.\n\n    **Process Flow:**\n    1. Receive the PDF file and metadata.\n    2. Convert the PDF content to markdown.\n    3. Upload the PDF file to Google Cloud Storage.\n    4. Upload the markdown file to Google Cloud Storage.\n    5. Convert the markdown content into chunks.\n    6. Store chunks in the Qdrant vector database.\n    7. Save document metadata in the PostgreSQL database.\n\n    **Notes:**\n    - Maximum file size: **25 MB**.\n    - The metadata must be provided as a JSON string. (hidden)",
+        "operationId": "post_pdf_upload_pdf_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_post_pdf_upload_pdf_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Document uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "message": "Document inserted successfully!"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON format",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Invalid JSON format: Expecting value"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Error processing upload"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/pdf/document/{DocumentNumber}/{RevisionIndex}": {
       "delete": {
-        "description": "Deletes a single plant based on the ID supplied",
+        "tags": [
+          "PDFv1"
+        ],
+        "summary": "Delete PDF Document",
+        "description": "Deletes a PDF document and its associated metadata from the database, Google Cloud Storage, \n    and Qdrant vector store based on the provided document number and revision index.\n\n    **Implementation:**\n    - Removes the document record from the database.\n    - Deletes the corresponding PDF and Markdown files from Google Cloud Storage.\n    - Deletes related vector embeddings from Qdrant.\n\n    **Notes:**\n    - Ensure the document exists before calling this endpoint.",
+        "operationId": "delete_pdf_document_pdf_document__DocumentNumber___RevisionIndex__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "parameters": [
           {
-            "name": "id",
+            "name": "DocumentNumber",
             "in": "path",
-            "description": "ID of plant to delete",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Documentnumber"
+            }
+          },
+          {
+            "name": "RevisionIndex",
+            "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "format": "int64"
+              "title": "Revisionindex"
             }
           }
         ],
         "responses": {
-          "204": {
-            "description": "Plant deleted",
-            "content": {}
+          "200": {
+            "description": "Successful deletion message",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "message": "Document deleted successfully!"
+                }
+              }
+            }
           },
-          "400": {
-            "description": "unexpected error",
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Document not found"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Error deleting document"
                 }
               }
             }
           }
         }
       }
-    }
-  },
-  "webhooks": {
-    "/plant/webhook": {
+    },
+    "/gcs/list": {
+      "get": {
+        "tags": [
+          "GCSv1"
+        ],
+        "summary": "Get Gcs List",
+        "description": "Retrieve a detailed list of PDF blobs from Google Cloud Storage.\n\nReturns:\n    list: A list of dictionaries containing blob details such as name, URI, and metadata.\n\nWeb Implementation:\n    - Document Manager\n    - Chatbot - List of chatbot dropdown",
+        "operationId": "get_gcs_list_gcs_list_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/qdrant/search/chunk": {
+      "get": {
+        "tags": [
+          "QDRANTv1"
+        ],
+        "summary": "Get Chunk",
+        "description": "Handles GET requests to search for text chunks in the Qdrant vector store.\n\nMethod: **GET**\n\n## WARNING\nThis API has no filter attached. Every available chunk/document can be accessed.\n\nSearches for text chunks in the Qdrant vector store based on a query.\n\nArgs:\n    query (str): The search query to embed and use for similarity search.\n    limit (int): The maximum number of results to return. Defaults to 3.\n\nReturns:\n    list[dict]: A list of dictionaries, each containing a 'chunk' of text and its associated 'metadata'.\n\nRaises:\n    RuntimeError: If an error occurs during the search process.\n\nImplementation: None",
+        "operationId": "get_chunk_qdrant_search_chunk_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Query"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 3,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qdrant/search/document": {
+      "get": {
+        "tags": [
+          "QDRANTv1"
+        ],
+        "summary": "Get Document",
+        "description": "Retrieve unique documents from the Qdrant vector store based on a search query.\n\nIt will search for `2 * limit` chunks then return maximum `limit` documents.\n\nMethod: **GET**\n\n## WARNING\nThis API has no filter attached. Every available chunk/document can be accessed.\n\nArgs:\n    query (str): The search query to embed and use for similarity search. Defaults to an empty string.\n    limit (int): The maximum number of unique documents to return. Defaults to 3.\n\nReturns:\n    list[dict]: A list of metadata dictionaries for the top unique documents.\n\nImplementation: WEB",
+        "operationId": "get_document_qdrant_search_document_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Query"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 3,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qdrant/search/chunk/{doc_num}": {
+      "get": {
+        "tags": [
+          "QDRANTv1"
+        ],
+        "summary": "Get Chunk From Document",
+        "description": "Retrieve text chunks from a specific document in the Qdrant vector store.\n\nMethod: **GET**\n\n## WARNING\nThis API has no filter attached. Every available chunk/document can be accessed.\n\nArgs:\n    doc_num (str): The document number to filter the search within.\n    query (str, optional): The search query to embed and use for similarity search. Defaults to an empty string.\n    limit (int, optional): The maximum number of results to return. Defaults to 3.\n\nReturns:\n    list[dict]: A list of dictionaries, each containing a 'chunk' of text and its associated 'metadata'.",
+        "operationId": "get_chunk_from_document_qdrant_search_chunk__doc_num__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_num",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Num"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Query"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 3,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qdrant/filter/chunk": {
       "post": {
-        "description": "Information about a new plant added to the store",
+        "tags": [
+          "QDRANTv1"
+        ],
+        "summary": "Post Filter Chunk",
+        "description": "Handles POST requests to filter and search for text chunks in the Qdrant vector store.\n\nMethod: POST\n\nArgs:\n    query (str): The search query to embed and use for similarity search. Defaults to an empty string.\n    limit (int): The maximum number of results to return. Defaults to 3.\n    filter (list[dict[str, str]]|None): A list of filter conditions, where each condition is a dictionary\n        with 'key' and 'value' specifying the metadata field and its required value. Defaults to None.\n    filter_type (FilterType): The type of filter to apply (MUST, SHOULD, MUST_NOT). Defaults to FilterType.MUST.\n\n    Example: \n\n    ```json\n    [\n        {\n            \"key\": \"string\",    // any metadata component\n            \"value\": \"string\",  // any value\n        }\n    ]\n    ```\n\n    Filter type:\n\n    1. MUST = Logic AND\n    2. SHOULD = Logic OR\n    3. MUST_NOT = Logic NOT AND\n\nReturns:\n    list[dict]: A list of dictionaries, each containing a 'chunk' of text and its associated 'metadata'.",
+        "operationId": "post_filter_chunk_qdrant_filter_chunk_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Query"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 3,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "filter_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/FilterType",
+              "default": "must"
+            }
+          }
+        ],
         "requestBody": {
-          "description": "Plant added to the store",
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewPlant"
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Filter"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Return a 200 status to indicate that the data was received successfully"
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chat/1": {
+      "post": {
+        "tags": [
+          "CHATv1"
+        ],
+        "summary": "Naive Rag Chat",
+        "description": "# Naive RAG\n\n### Handles POST requests to the endpoint for initiating a Naive RAG chat session.\n\nMethod: **POST**\n\nBest Usage: Simple question, answer writen explicitly in document\n\n### Algorithm: \n1. **Retrieval**: Retreive relevant data from document in vector database\n2. **Generation**: Use chat history and document to generate answer from LLM\n3. **Save**: Save chat history to database\n\n### Example Input: \n\n```json\n{\n    \"request\": {\n        \"session_id\": \"uuid\",               // (Optional)\n        \"chat_id\": \"uuid\",                  // (Optional)\n        \"question\": {           \n            \"role\": \"string\",               // (user, model, system)\n            \"text\": \"string\"                // user question\n        }\n    },\n    \"llm_config\": {                         // (Optional) - Config llm model\n        \"model\": \"gemini-1.5-flash\",        // (Optional) - LLM model registered in gemini\n        \"max_output_token\": 2048,           // (Optional) - int\n        \"temperature\": 0.7,                 // (Optional) - float, 0-1 (or 0-2 for some model)\n                                            // 0 = precise, 1/2 = creative\n        \"top_p\": 0.4,                       // (Optional) - float\n        \"top_k\": 35                         // (Optional) - int\n    },\n    \"filters\": [                            // (Optional) - Set filter for document retreival\n        {\n            \"key\": \"metadata.CompanyCode\",  // Metadata key\n            \"value\": \"A000\"                 // Value\n        }\n    ],\n    \"filter_type\": \"must\",                  // (must, should, must_not) \n                                            // must = match all condition in filters\n                                            // should = match any condition in filters\n                                            // must_not = not match any condition in filters\n    \"user_id\": \"USER 001\"                   // User ID \n}\n```\n\n### Example Output: \n\n```json\n{\n\"session_id\": \"5401838e-ff92-41ec-a9b4-0b2ee265579d\",\n\"chat_id\": \"f026803b-f876-4f89-89b9-8c7517d1e2a1\",\n\"question\": {\n    \"role\": \"user\",\n    \"text\": \"string\"\n},\n\"answer\": {\n    \"role\": \"model\",\n    \"text\": \"string\"\n},\n\"source_documents\": [\n    {\n    \"chunk\": \"string\",                            // Part of retrieved document\n    \"metadata\": {                                 // System Metadata\n        \"metadata\": {                             // Document Metadata\n        \"Id\": \"string\",\n        \"CategoryId\": \"string\",\n        \"DocumentCode\": \"string\",\n        \"DocumentNumber\": \"string\",               // Key\n        \"Title\": \"string\",\n        \"RevisionIndex\": 0,\n        \"Purpose\": \"string\",\n        \"Scope\": \"string\",\n        \"OriginatorCode\": \"string\",\n        \"Originator\": \"{\"Id\":\"string\",\"Title\":\"string\",\"Code\":\"string\",\"Level\":\"DEPARTEMEN\"}\",\n        \"Status\": 1,\n        \"ViewCount\": 0,\n        \"DownloadCount\": 0,\n        \"ApprovalAt\": \"2017-09-08\",\n        \"CompanyCode\": \"A000\",\n        \"Company\": \"{\"Code\":\"A000\",\"Name\":\"PT Pupuk Indonesia (Persero)\",\"ShortName\":\"PIHC\"}\",\n        \"CreatedAt\": \"2024-10-25T14:40:38.933000\",\n        \"CreatedBy\": \"{\"Name\":\"System\",\"Id\":\"System\",\"Username\":\"System\"}\",\n        \"UpdatedAt\": \"2024-10-25T14:40:38.933000\",\n        \"UpdatedBy\": \"{\"Name\":\"System\",\"Id\":\"System\",\"Username\":\"System\"}\",\n        \"HasBeenDistributed\": false\n        },\n        \"doc_num\": \"string\",\n        \"revision_number\": 0,\n        \"doc_uri\": \"string\",                        // Uri to document, restricted only to authenticated users\n        \"md_uri\": \"string\",                         // Uri to markdown, restricted only to authenticated users\n        \"chunk_order\": 30,\n        \"_id\": \"string\",\n        \"_collection_name\": \"string\"\n    }\n    },\n],\n\"deepthinking\": null                                // NULL\n}\n```",
+        "operationId": "naive_rag_chat_chat_1_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatFilterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/chat/2": {
+      "post": {
+        "tags": [
+          "CHATv1"
+        ],
+        "summary": "Hyde Rag Chat",
+        "description": "# Hyde RAG\n\n### Handles POST requests to the endpoint for initiating a Hyde RAG chat session.\n\nMethod: **POST**\n\nBest Usage: Simple question, answer writen explicitly in document\n\n### Algorithm: \n1. **Hypothesis**: LLM make a hypothesis of user question and chat history\n2. **Retrieval**: Retreive relevant data based on the hypothesis\n3. **Generation**: Use retrieved document to generate answer from LLM\n4. **Save**: Save chat history to database\n\n### Example Input: \n\n```json\n{\n    \"request\": {\n        \"session_id\": \"uuid\",               // (Optional)\n        \"chat_id\": \"uuid\",                  // (Optional)\n        \"question\": {           \n            \"role\": \"string\",               // (user, model, system)\n            \"text\": \"string\"                // user question\n        }\n    },\n    \"llm_config\": {                         // (Optional) - Config llm model\n        \"model\": \"gemini-1.5-flash\",        // (Optional) - LLM model registered in gemini\n        \"max_output_token\": 2048,           // (Optional) - int\n        \"temperature\": 0.7,                 // (Optional) - float, 0-1 (or 0-2 for some model)\n                                            // 0 = precise, 1/2 = creative\n        \"top_p\": 0.4,                       // (Optional) - float\n        \"top_k\": 35                         // (Optional) - int\n    },\n    \"filters\": [                            // (Optional) - Set filter for document retreival\n        {\n            \"key\": \"metadata.CompanyCode\",  // Metadata key\n            \"value\": \"A000\"                 // Value\n        }\n    ],\n    \"filter_type\": \"must\",                  // (must, should, must_not) \n                                            // must = match all condition in filters\n                                            // should = match any condition in filters\n                                            // must_not = not match any condition in filters\n    \"user_id\": \"USER 001\"                   // User ID \n}\n```\n\n### Example Output: \n\n```json\n{\n\"session_id\": \"5401838e-ff92-41ec-a9b4-0b2ee265579d\",\n\"chat_id\": \"f026803b-f876-4f89-89b9-8c7517d1e2a1\",\n\"question\": {\n    \"role\": \"user\",\n    \"text\": \"string\"\n},\n\"answer\": {\n    \"role\": \"model\",\n    \"text\": \"string\"\n},\n\"source_documents\": [\n    {\n    \"chunk\": \"string\",                            // Part of retrieved document\n    \"metadata\": {                                 // System Metadata\n        \"metadata\": {                             // Document Metadata\n        \"Id\": \"string\",\n        \"CategoryId\": \"string\",\n        \"DocumentCode\": \"string\",\n        \"DocumentNumber\": \"string\",               // Key\n        \"Title\": \"string\",\n        \"RevisionIndex\": 0,\n        \"Purpose\": \"string\",\n        \"Scope\": \"string\",\n        \"OriginatorCode\": \"string\",\n        \"Originator\": \"{\"Id\":\"string\",\"Title\":\"string\",\"Code\":\"string\",\"Level\":\"DEPARTEMEN\"}\",\n        \"Status\": 1,\n        \"ViewCount\": 0,\n        \"DownloadCount\": 0,\n        \"ApprovalAt\": \"2017-09-08\",\n        \"CompanyCode\": \"A000\",\n        \"Company\": \"{\"Code\":\"A000\",\"Name\":\"PT Pupuk Indonesia (Persero)\",\"ShortName\":\"PIHC\"}\",\n        \"CreatedAt\": \"2024-10-25T14:40:38.933000\",\n        \"CreatedBy\": \"{\"Name\":\"System\",\"Id\":\"System\",\"Username\":\"System\"}\",\n        \"UpdatedAt\": \"2024-10-25T14:40:38.933000\",\n        \"UpdatedBy\": \"{\"Name\":\"System\",\"Id\":\"System\",\"Username\":\"System\"}\",\n        \"HasBeenDistributed\": false\n        },\n        \"doc_num\": \"string\",\n        \"revision_number\": 0,\n        \"doc_uri\": \"string\",                        // Uri to document, restricted only to authenticated users\n        \"md_uri\": \"string\",                         // Uri to markdown, restricted only to authenticated users\n        \"chunk_order\": 30,\n        \"_id\": \"string\",\n        \"_collection_name\": \"string\"\n    }\n    },\n],\n\"deepthinking\": null                                // NULL\n}\n```",
+        "operationId": "hyde_rag_chat_chat_2_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatFilterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/chat/3": {
+      "post": {
+        "tags": [
+          "CHATv1"
+        ],
+        "summary": "Reasoning Rag Chat",
+        "description": "# REASONING RAG\n\n### Handles POST requests to the endpoint for initiating a Reasoning RAG chat session.\n\nMethod: **POST**\n\nBest Usage: More complex question, analysis, document screening\n\n### Algorithm: \n1. **Init**: System create asking model and answering model\n2. **Asking Model**: Ask a question to answering model\n3. **Answering Model**: Answering question using Naive RAG\n4. **Repetition**: Back to step 2\n4. **Save**: Save chat history to database\n\n### Example Input: \n\n```json\n{\n    \"request\": {\n        \"session_id\": \"uuid\",               // (Optional)\n        \"chat_id\": \"uuid\",                  // (Optional)\n        \"question\": {           \n            \"role\": \"string\",               // (user, model, system)\n            \"text\": \"string\"                // user question\n        }\n    },\n    \"llm_config\": {                         // (Optional) - Config llm model\n        \"model\": \"gemini-1.5-flash\",        // (Optional) - LLM model registered in gemini\n        \"max_output_token\": 2048,           // (Optional) - int\n        \"temperature\": 0.7,                 // (Optional) - float, 0-1 (or 0-2 for some model)\n                                            // 0 = precise, 1/2 = creative\n        \"top_p\": 0.4,                       // (Optional) - float\n        \"top_k\": 35                         // (Optional) - int\n    },\n    \"filters\": [                            // (Optional) - Set filter for document retreival\n        {\n            \"key\": \"metadata.CompanyCode\",  // Metadata key\n            \"value\": \"A000\"                 // Value\n        }\n    ],\n    \"filter_type\": \"must\",                  // (must, should, must_not) \n                                            // must = match all condition in filters\n                                            // should = match any condition in filters\n                                            // must_not = not match any condition in filters\n    \"user_id\": \"USER 001\"                   // User ID \n}\n```\n\n### Example Output: \n\n```json\n{\n\"session_id\": \"5401838e-ff92-41ec-a9b4-0b2ee265579d\",\n\"chat_id\": \"f026803b-f876-4f89-89b9-8c7517d1e2a1\",\n\"question\": {\n    \"role\": \"user\",\n    \"text\": \"string\"\n},\n\"answer\": {\n    \"role\": \"model\",\n    \"text\": \"string\"\n},\n\"source_documents\": [\n    {\n    \"chunk\": \"string\",                            // Part of retrieved document\n    \"metadata\": {                                 // System Metadata\n        \"metadata\": {                             // Document Metadata\n        \"Id\": \"string\",\n        \"CategoryId\": \"string\",\n        \"DocumentCode\": \"string\",\n        \"DocumentNumber\": \"string\",               // Key\n        \"Title\": \"string\",\n        \"RevisionIndex\": 0,\n        \"Purpose\": \"string\",\n        \"Scope\": \"string\",\n        \"OriginatorCode\": \"string\",\n        \"Originator\": \"{\"Id\":\"string\",\"Title\":\"string\",\"Code\":\"string\",\"Level\":\"DEPARTEMEN\"}\",\n        \"Status\": 1,\n        \"ViewCount\": 0,\n        \"DownloadCount\": 0,\n        \"ApprovalAt\": \"2017-09-08\",\n        \"CompanyCode\": \"A000\",\n        \"Company\": \"{\"Code\":\"A000\",\"Name\":\"PT Pupuk Indonesia (Persero)\",\"ShortName\":\"PIHC\"}\",\n        \"CreatedAt\": \"2024-10-25T14:40:38.933000\",\n        \"CreatedBy\": \"{\"Name\":\"System\",\"Id\":\"System\",\"Username\":\"System\"}\",\n        \"UpdatedAt\": \"2024-10-25T14:40:38.933000\",\n        \"UpdatedBy\": \"{\"Name\":\"System\",\"Id\":\"System\",\"Username\":\"System\"}\",\n        \"HasBeenDistributed\": false\n        },\n        \"doc_num\": \"string\",\n        \"revision_number\": 0,\n        \"doc_uri\": \"string\",                        // Uri to document, restricted only to authenticated users\n        \"md_uri\": \"string\",                         // Uri to markdown, restricted only to authenticated users\n        \"chunk_order\": 30,\n        \"_id\": \"string\",\n        \"_collection_name\": \"string\"\n    }\n    },\n],\n\"deepthinking\": [\n    {\n    \"agent\": \"asking_agent\",\n    \"text\": \"string\",\n    \"sources\": null\n    },\n    {\n    \"agent\": \"answering_agent\",\n    \"text\": \"string\",\n    \"sources\": [\n        {\n        \"metadata\": metadata\n    }\n]\n```",
+        "operationId": "reasoning_rag_chat_chat_3_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatFilterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/chat/4": {
+      "post": {
+        "tags": [
+          "CHATv1"
+        ],
+        "summary": "Rats Chat",
+        "description": "# Agentic RATS\n\n### Handles POST requests to the endpoint for initiating a Agentic RATS chat session.\n\nMethod: **POST**\n\nBest Usage: More complex question, analysis, document screening\n\n### Algorithm: \n1. **Init**: Agent manager create a strategy\n2. **Model**: AI Agent follow the strategy\n3. **Save**: Save chat history to database\n\n### Example Input: \n\n```json\n{\n    \"request\": {\n        \"session_id\": \"uuid\",               // (Optional)\n        \"chat_id\": \"uuid\",                  // (Optional)\n        \"question\": {           \n            \"role\": \"string\",               // (user, model, system)\n            \"text\": \"string\"                // user question\n        }\n    },\n    \"llm_config\": {                         // (Optional) - Config llm model\n        \"model\": \"gemini-1.5-flash\",        // (Optional) - LLM model registered in gemini\n        \"max_output_token\": 2048,           // (Optional) - int\n        \"temperature\": 0.7,                 // (Optional) - float, 0-1 (or 0-2 for some model)\n                                            // 0 = precise, 1/2 = creative\n        \"top_p\": 0.4,                       // (Optional) - float\n        \"top_k\": 35                         // (Optional) - int\n    },\n    \"filters\": [                            // (Optional) - Set filter for document retreival\n        {\n            \"key\": \"metadata.CompanyCode\",  // Metadata key\n            \"value\": \"A000\"                 // Value\n        }\n    ],\n    \"filter_type\": \"must\",                  // (must, should, must_not) \n                                            // must = match all condition in filters\n                                            // should = match any condition in filters\n                                            // must_not = not match any condition in filters\n    \"user_id\": \"USER 001\"                   // User ID \n}\n```\n\n### Example Output: \n\n```json\n{\n\"session_id\": \"5401838e-ff92-41ec-a9b4-0b2ee265579d\",\n\"chat_id\": \"f026803b-f876-4f89-89b9-8c7517d1e2a1\",\n\"question\": {\n    \"role\": \"user\",\n    \"text\": \"string\"\n},\n\"answer\": {\n    \"role\": \"model\",\n    \"text\": \"string\"\n},\n\"source_documents\": [\n    {\n    \"chunk\": \"string\",                            // Part of retrieved document\n    \"metadata\": {                                 // System Metadata\n        \"metadata\": {                             // Document Metadata\n        \"Id\": \"string\",\n        \"CategoryId\": \"string\",\n        \"DocumentCode\": \"string\",\n        \"DocumentNumber\": \"string\",               // Key\n        \"Title\": \"string\",\n        \"RevisionIndex\": 0,\n        \"Purpose\": \"string\",\n        \"Scope\": \"string\",\n        \"OriginatorCode\": \"string\",\n        \"Originator\": \"{\"Id\":\"string\",\"Title\":\"string\",\"Code\":\"string\",\"Level\":\"DEPARTEMEN\"}\",\n        \"Status\": 1,\n        \"ViewCount\": 0,\n        \"DownloadCount\": 0,\n        \"ApprovalAt\": \"2017-09-08\",\n        \"CompanyCode\": \"A000\",\n        \"Company\": \"{\"Code\":\"A000\",\"Name\":\"PT Pupuk Indonesia (Persero)\",\"ShortName\":\"PIHC\"}\",\n        \"CreatedAt\": \"2024-10-25T14:40:38.933000\",\n        \"CreatedBy\": \"{\"Name\":\"System\",\"Id\":\"System\",\"Username\":\"System\"}\",\n        \"UpdatedAt\": \"2024-10-25T14:40:38.933000\",\n        \"UpdatedBy\": \"{\"Name\":\"System\",\"Id\":\"System\",\"Username\":\"System\"}\",\n        \"HasBeenDistributed\": false\n        },\n        \"doc_num\": \"string\",\n        \"revision_number\": 0,\n        \"doc_uri\": \"string\",                        // Uri to document, restricted only to authenticated users\n        \"md_uri\": \"string\",                         // Uri to markdown, restricted only to authenticated users\n        \"chunk_order\": 30,\n        \"_id\": \"string\",\n        \"_collection_name\": \"string\"\n    }\n    },\n],\n\"deepthinking\": [\n    {\n    \"agent\": \"Agent Manager\",\n    \"text\": \"string\",\n    \"sources\": []\n    },\n    {\n    \"agent\": \"agent\",\n    \"text\": \"string\",\n    \"sources\": []\n    },\n    {\n    \"agent\": \"Agent Manager\",\n    \"text\": \"string\",\n    \"sources\": []\n    },\n    {\n    \"agent\": \"qdrant\",\n    \"text\": \"string\",\n    \"sources\": [\n        {\n        \"metadata\": metadata\n        }\n    }\n]\n```",
+        "operationId": "RATS_chat_chat_4_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatFilterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/chat/feedback": {
+      "post": {
+        "tags": [
+          "CHATv1"
+        ],
+        "summary": "Feedback",
+        "description": "Handles the POST request to submit user feedback for a chat session.\n\nThis endpoint receives a feedback request, processes it using the Chatbot\nclass, and saves the feedback to the database. If an error occurs during\nprocessing, it returns an HTTP 400 error with the exception details.\n\nArgs:\n    request (ChatFeedbackRequest):\n    \n    ```json\n    {\n        \"chat_message_id\": \"string\",\n        \"chat_id\": \"string\",\n        \"session_id\": \"string\",\n        \"user_id\": \"string\",\n        \"feedback\": \"string\",\n        \"is_liked\": bool\n    }\n    ```\n    \nReturns:\n    ChatFeedbackRequest: The original feedback request if successfully saved.\n    HTTPException: An exception with status code 400 if an error occurs.",
+        "operationId": "feedback_chat_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatFeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/chat_sse/events": {
+      "get": {
+        "tags": [
+          "CHAT-SSEv1"
+        ],
+        "summary": "Stream Events",
+        "description": "# SSE - Server Side Event\n## Silahkan tes API ini dengan POSTMAN, Swagger tidak works :(",
+        "operationId": "stream_events_chat_sse_events_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chat_sse/1": {
+      "post": {
+        "tags": [
+          "CHAT-SSEv1"
+        ],
+        "summary": "Chat1",
+        "operationId": "chat1_chat_sse_1_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chat_sse/2": {
+      "post": {
+        "tags": [
+          "CHAT-SSEv1"
+        ],
+        "summary": "Chat2",
+        "operationId": "chat2_chat_sse_2_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatFilterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/history/session": {
+      "get": {
+        "tags": [
+          "HISTORYv1"
+        ],
+        "summary": "Get Session",
+        "description": "Retrieve all chat sessions for a given user.\n\nMethod: **GET**\n\nArgs:\n    user_id (str): The ID of the user whose chat sessions are to be retrieved.\n\nReturns:\n    List of session IDs associated with the user, ordered by the earliest creation time.\n    Example: \n    \n    ```json\n        [\n            \"string1\",\n            \"string2\"\n        ]\n    ```",
+        "operationId": "get_session_history_session_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/history/chat": {
+      "get": {
+        "tags": [
+          "HISTORYv1"
+        ],
+        "summary": "Get Chat",
+        "description": "Retrieve all chat IDs for a given user and session.\n\nMethod: **GET**\n\nArgs:\n    user_id (str): The ID of the user whose chat IDs are to be retrieved.\n    session_id (str): The ID of the session for which chat IDs are to be retrieved.\n\nReturns:\n    list: A list of chat IDs associated with the specified user and session.\n    Example: \n    \n    ```json\n    [\n        \"string1\",\n        \"string2\"\n    ]\n    ```",
+        "operationId": "get_chat_history_chat_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/history/chat-message": {
+      "get": {
+        "tags": [
+          "HISTORYv1"
+        ],
+        "summary": "Get Chat Message",
+        "description": "Retrieve all chat messages for a specific user, session, and chat.\n\nArgs:\n    user_id (str): The ID of the user.\n    session_id (str): The ID of the session.\n    chat_id (str): The ID of the chat.\n\nReturns:\n    List[ChatHistoryResponse]: A list of chat messages including message ID, role, and content.\n    Example: \n    \n    ```json\n    [\n        {\n            \"chat_message_id\":\"string\",\n            \"role\":\"user\",\n            \"text\":\"string\"\n        },\n        {\n            \"chat_message_id\":\"string\",\n            \"role\":\"model\",\n            \"text\":\"markdown string\"\n        }\n    ]\n    ```",
+        "operationId": "get_chat_message_history_chat_message_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "chat_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Chat Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -154,63 +1111,484 @@
   },
   "components": {
     "schemas": {
-      "Plant": {
-        "required": [
-          "name"
-        ],
-        "type": "object",
+      "Body_login_for_access_token_token_post": {
         "properties": {
-          "name": {
-            "description": "The name of the plant",
-            "type": "string"
-          },
-          "tag": {
-            "description": "Tag to specify the type",
-            "type": "string"
-          }
-        }
-      },
-      "NewPlant": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Plant"
-          },
-          {
-            "required": [
-              "id"
-            ],
-            "type": "object",
-            "properties": {
-              "id": {
-                "description": "Identification number of the plant",
-                "type": "integer",
-                "format": "int64"
+          "grant_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "password"
+              },
+              {
+                "type": "null"
               }
-            }
-          }
-        ]
-      },
-      "Error": {
-        "required": [
-          "error",
-          "message"
-        ],
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "integer",
-            "format": "int32"
+            ],
+            "title": "Grant Type"
           },
-          "message": {
-            "type": "string"
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope",
+            "default": ""
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Secret"
           }
-        }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "Body_login_for_access_token_token_post"
+      },
+      "Body_post_pdf_to_markdown_pdf_to_markdown_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_post_pdf_to_markdown_pdf_to_markdown_post"
+      },
+      "Body_post_pdf_upload_pdf_upload_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          },
+          "doc": {
+            "type": "string",
+            "title": "Doc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "doc"
+        ],
+        "title": "Body_post_pdf_upload_pdf_upload_post"
+      },
+      "ChatFeedbackRequest": {
+        "properties": {
+          "chat_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chat Message Id"
+          },
+          "chat_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chat Id"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "feedback": {
+            "type": "string",
+            "title": "Feedback"
+          },
+          "is_liked": {
+            "type": "boolean",
+            "title": "Is Liked"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "user_id",
+          "feedback",
+          "is_liked"
+        ],
+        "title": "ChatFeedbackRequest"
+      },
+      "ChatFilterRequest": {
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/ChatRequest"
+          },
+          "llm_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LLMConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": {
+              "model": "gemini-1.5-flash",
+              "max_output_token": 2048,
+              "temperature": 0.7,
+              "top_p": 0.4,
+              "top_k": 35
+            }
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filters",
+            "default": [
+              {
+                "key": "metadata.CompanyCode",
+                "value": "A000"
+              }
+            ]
+          },
+          "filter_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FilterType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "must"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id",
+            "default": "USER 001"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request"
+        ],
+        "title": "ChatFilterRequest"
+      },
+      "ChatRequest": {
+        "properties": {
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id",
+            "default": "72752e34-8e12-4407-bb56-2b0d0a6121e5"
+          },
+          "chat_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chat Id",
+            "default": "67f3d816-9550-478f-945e-7d17f48c2934"
+          },
+          "question": {
+            "$ref": "#/components/schemas/ChatTemplate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "ChatRequest"
+      },
+      "ChatTemplate": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "text"
+        ],
+        "title": "ChatTemplate"
+      },
+      "DocumentResponse": {
+        "properties": {
+          "DocumentNumber": {
+            "type": "string",
+            "title": "Documentnumber",
+            "example": "ABC123"
+          },
+          "RevisionIndex": {
+            "type": "integer",
+            "title": "Revisionindex",
+            "example": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "DocumentNumber",
+          "RevisionIndex"
+        ],
+        "title": "DocumentResponse"
+      },
+      "FilterType": {
+        "type": "string",
+        "enum": [
+          "must",
+          "must_not",
+          "should"
+        ],
+        "title": "FilterType",
+        "description": "Enumeration for filter types used in search queries.\n\nAttributes:\n    MUST (str): All conditions must match.\n    MUST_NOT (str): All conditions must NOT match.\n    SHOULD (str): At least one of those conditions should match."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LLMConfig": {
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "default": "gemini-1.5-flash"
+          },
+          "max_output_token": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Output Token",
+            "default": 2048
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature",
+            "default": 0.7
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top P",
+            "default": 0.4
+          },
+          "top_k": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top K",
+            "default": 35
+          }
+        },
+        "type": "object",
+        "title": "LLMConfig"
+      },
+      "Token": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "token_type"
+        ],
+        "title": "Token"
+      },
+      "User": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "disabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username"
+        ],
+        "title": "User"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
       }
     },
     "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer"
+      "OAuth2PasswordBearer": {
+        "type": "oauth2",
+        "flows": {
+          "password": {
+            "scopes": {},
+            "tokenUrl": "token"
+          }
+        }
       }
     }
   }
